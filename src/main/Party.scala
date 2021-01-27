@@ -7,7 +7,7 @@ class Party {
     for(char <- oppParty.allCharacters){
       allXP = allXP + this.allCharacters(0).gainXP(char)
     }
-    for(char <- allCharacters){
+    for(char <- this.allCharacters){
       if (char.alive == true){
         aliveChar = aliveChar + 1
       }
@@ -16,6 +16,18 @@ class Party {
       if (char.alive == true){
         char.addXP(allXP/aliveChar)
       }
+    }
+  }
+
+  def isWinner(oppParty: Party){
+    var dead: Int = 0
+    for (char <- oppParty.allCharacters){
+      if(char.alive == false){
+        dead = dead + 1
+      }
+    }
+    if (dead == oppParty.allCharacters.length){
+      divideXP(oppParty)
     }
   }
 }

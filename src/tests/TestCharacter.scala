@@ -204,4 +204,24 @@ class TestCharacter extends FunSuite {
     assert(party1.allCharacters(2).currentXP === 40)
   }
 
+  test ("is Winner"){
+    var party1: Party = new Party()
+    var party2: Party = new Party()
+
+    party1.isWinner(party2)
+    //When party is not dead
+    assert(party1.allCharacters(0).currentXP === 0)
+    assert(party1.allCharacters(1).currentXP === 0)
+    assert(party1.allCharacters(2).currentXP === 0)
+
+    for(char <- party2.allCharacters){
+      char.alive = false
+    }
+
+    party1.isWinner(party2)
+    //When party is dead
+    assert(party1.allCharacters(0).currentXP === 8)
+    assert(party1.allCharacters(1).currentXP === 8)
+    assert(party1.allCharacters(2).currentXP === 8)
+  }
 }
