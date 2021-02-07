@@ -1,5 +1,5 @@
 class Party {
-  var allCharacters: List[Character] = List(new Character, new Character, new Character)
+  var allCharacters: List[Character] = List(new Warrior, new Mage, new Warrior)
 
   def divideXP(oppParty: Party){
     var aliveChar: Int = 0

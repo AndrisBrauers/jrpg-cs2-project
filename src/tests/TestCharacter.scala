@@ -1,30 +1,12 @@
 import org.scalatest._
 
 class TestCharacter extends FunSuite {
-  test("Constructor for Character") {
-    val Player1: Character = new Character()
-
-    assert(Player1.level === 1)
-    assert(Player1.currentXP === 0)
-    assert(Player1.neededXP === 20)
-    assert(Player1.maxHP === 10)
-    assert(Player1.currentHP === 10)
-    assert(Player1.basicAttack === 2)
-    assert(Player1.defense === 2)
-    assert(Player1.specialAttack === 5)
-    assert(Player1.magicAttack === 4)
-    assert(Player1.magicDefense === 2)
-    assert(Player1.maxMP === 10)
-    assert(Player1.currentMP === 10)
-    assert(Player1.speed === 2)
-    assert(Player1.alive === true)
-  }
 
   test("Test takeDamage") {
-    val player1: Character = new Character()
-    val player2: Character = new Character()
-    val player3: Character = new Character()
-    val player4: Character = new Character()
+    val player1: Character = new Warrior()
+    val player2: Character = new Warrior()
+    val player3: Character = new Warrior()
+    val player4: Character = new Warrior()
 
     player1.takeDamage(1)
 
@@ -33,15 +15,15 @@ class TestCharacter extends FunSuite {
 
     player2.takeDamage(20)
 
-    assert(player2.currentHP === 0)
-    assert(player2.alive === false)
+    assert(player2.currentHP === 5)
+    assert(player2.alive === true)
 
-    player3.takeDamage(30)
+    player3.takeDamage(40)
 
     assert(player3.currentHP === 0)
     assert(player3.alive === false)
 
-    player4.takeDamage(18)
+    player4.takeDamage(36)
 
     assert(player4.currentHP === 1)
     assert(player4.alive === true)
@@ -50,56 +32,43 @@ class TestCharacter extends FunSuite {
 
     player1.takeDamage(5)
 
-    assert(player1.currentHP === 6)
+    assert(player1.currentHP === 7)
     assert(player1.alive === true)
   }
 
   test("Basic attack"){
-    val player1: Character = new Character()
-    val player2: Character = new Character()
+    val player1: Character = new Warrior()
+    val player2: Character = new Warrior()
 
-    player1.basicAttackOpp(player2)
+    player1.attackOpp(player2, player1.attack)
 
     assert(player2.currentHP === 9)
   }
 
-  test("Special attack"){
-    val player1: Character = new Character()
-    val player2: Character = new Character()
-
-    player1.specialAttackOpp(player2)
-
-    assert(player2.currentHP === 7)
-  }
 
   test("Magic attack"){
-    val player1: Character = new Character()
-    val player2: Character = new Character()
+    val player1: Character = new Warrior()
+    val player2: Character = new Warrior()
 
-    player1.magicAttackOpp(player2)
+    player1.magicAttackOpp(player2, player1.magicAttack)
+
+    assert(player2.currentHP === 9)
+    assert(player1.currentMP === 3)
+
+    player1.magicAttackOpp(player2, player1.magicAttack)
 
     assert(player2.currentHP === 8)
-    assert(player1.currentMP === 7)
+    assert(player1.currentMP === 0)
 
-    player1.magicAttackOpp(player2)
+    player1.magicAttackOpp(player2, player1.magicAttack)
 
-    assert(player2.currentHP === 6)
-    assert(player1.currentMP === 4)
-
-    player1.magicAttackOpp(player2)
-
-    assert(player2.currentHP === 4)
-    assert(player1.currentMP === 1)
-
-    player1.magicAttackOpp(player2)
-
-    assert(player2.currentHP === 4)
-    assert(player1.currentMP === 1)
+    assert(player2.currentHP === 8)
+    assert(player1.currentMP === 0)
   }
 
   test("Gaining XP"){
-    val player1: Character = new Character()
-    val player2: Character = new Character()
+    val player1: Character = new Warrior()
+    val player2: Character = new Warrior()
 
     player1.gainXP(player2)
     assert(player1.gainXP(player2) === 8)
@@ -112,9 +81,9 @@ class TestCharacter extends FunSuite {
   }
 
   test("Adding XP") {
-    val player1: Character = new Character()
-    val player2: Character = new Character()
-    val player3: Character = new Character()
+    val player1: Character = new Warrior()
+    val player2: Character = new Warrior()
+    val player3: Character = new Warrior()
 
     //Check if level do not increase
     player1.addXP(8)
@@ -130,15 +99,14 @@ class TestCharacter extends FunSuite {
     assert(player2.currentXP === 24)
     assert(player2.level === 2)
     assert(player2.neededXP === 60)
-    //Check if stats increase
-    assert(player2.maxHP === 15)
-    assert(player2.basicAttack === 4)
-    assert(player2.specialAttack === 9)
-    assert(player2.defense === 4)
-    assert(player2.magicAttack === 7)
-    assert(player2.magicDefense === 4)
-    assert(player2.maxMP === 15)
-    assert(player2.speed === 3)
+    //Check if stats increase (In new test file)
+//    assert(player2.maxHP === 15)
+//    assert(player2.attack === 4)
+//    assert(player2.defense === 4)
+//    assert(player2.magicAttack === 7)
+//    assert(player2.magicDefense === 4)
+//    assert(player2.maxMP === 15)
+//    assert(player2.speed === 3)
 
     //Check when level up multiple levels
 
@@ -147,15 +115,14 @@ class TestCharacter extends FunSuite {
     assert(player3.currentXP === 160)
     assert(player3.level === 4)
     assert(player3.neededXP === 300)
-    //Check if stats increase
-    assert(player3.maxHP === 25)
-    assert(player3.basicAttack === 8)
-    assert(player3.specialAttack === 17)
-    assert(player3.defense === 8)
-    assert(player3.magicAttack === 13)
-    assert(player3.magicDefense === 8)
-    assert(player3.maxMP === 25)
-    assert(player3.speed === 5)
+    //Check if stats increase (In new test file)
+//    assert(player3.maxHP === 25)
+//    assert(player3.attack === 8)
+//    assert(player3.defense === 8)
+//    assert(player3.magicAttack === 13)
+//    assert(player3.magicDefense === 8)
+//    assert(player3.maxMP === 25)
+//    assert(player3.speed === 5)
   }
 
   test ("Dividing XP to party") {
@@ -172,13 +139,13 @@ class TestCharacter extends FunSuite {
 
     //Situation where party2 has different number and leveled characters
 
-    var char1: Character = new Character()
+    var char1: Character = new Warrior()
     char1.level = 1
-    var char2: Character = new Character()
+    var char2: Character = new Warrior()
     char2.level = 2
-    var char3: Character = new Character()
+    var char3: Character = new Warrior()
     char3.level = 3
-    var char4: Character = new Character()
+    var char4: Character = new Warrior()
     char4.level = 4
     party2.allCharacters = List(char1, char2, char3, char4)
 
