@@ -17,13 +17,6 @@ abstract class Character {
   var alive: Boolean = true
 
   def increaseStats(): Unit ={
-    this.maxHP = this.maxHP + 5
-    this.attack = this.attack + 2
-    this.defense = this.defense + 2
-    this.magicAttack = this.magicAttack + 3
-    this.magicDefense = this.magicDefense + 2
-    this.maxMP = this.maxMP + 5
-    this.speed = this.speed + 1
   }
 
   def gainXP(opponent: Character):Int = {
