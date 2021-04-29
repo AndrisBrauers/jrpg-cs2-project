@@ -1,5 +1,7 @@
 package view
 
+import io.socket.client.{IO, Socket}
+import io.socket.emitter.Emitter
 import javafx.scene.input.{KeyEvent, MouseEvent}
 import play.api.libs.json.JsPath.\
 import scalafx.application.JFXApp
@@ -11,40 +13,55 @@ import scalafx.scene.paint.Color
 import scalafx.scene.shape.{Circle, Rectangle}
 import play.api.libs.json.{JsValue, Json}
 import scalafx.animation.AnimationTimer
-import view.Overworld
-import Controler.KeyEventHandler
-
 import scala.math.BigDecimal.double2bigDecimal
 
 
+class SetID() extends Emitter.Listener {
+  override def call(objects: Object*): Unit = {
+    val message : String = objects.apply(0).toString
+    Overworld.playerID = message
+  }
+}
 
+class OverworldMap() extends Emitter.Listener {
+  override def call(objects: Object*): Unit = {
+    val message : String = objects.apply(0).toString
+    Overworld.fromMapJSON(message)
+  }
+}
+
+class OverworldState() extends Emitter.Listener {
+  override def call(objects: Object*): Unit = {
+    val JSON : String = objects.apply(0).toString
+    val Players : String = objects.apply(1).toString
+    Overworld.playerJSON = JSON
+    Overworld.playerString = Players
+  }
+}
 
 object Overworld extends JFXApp {
 
+  val socket: Socket = IO.socket("http://localhost:8080/")
+  socket.on("overworldState", new OverworldState())
+  socket.on("overworldMap", new OverworldMap())
+  socket.on("yourPartyId", new SetID())
+  socket.connect()
+
+  var playerID : String = ""
+
   var sceneGraphics: Group = new Group {}
 
-  var oldPlayerJSON  : String = ""
-  var newPlayerJSON : String = ""
+  var playerJSON  : String = ""
+  var playerString : String = ""
 
   //This string is placeholder when opponent moving will be implemented
-  var oppInfo : JsValue = Json.parse("""[{"location":{"x":2, "y": 2}, "level":25,"inBattle": false}, {"location":{"x":2.43, "y": 0.45}, "level":10,"inBattle": false}, {"location":{"x":12.49, "y": 9.32}, "level":1,"inBattle": false}, {"location":{"x":6.30, "y": 1.43}, "level":5,"inBattle": true}]""")
+  //var oppInfo : JsValue = Json.parse("""[{"location":{"x":2, "y": 2}, "level":25,"inBattle": false}, {"location":{"x":2.43, "y": 0.45}, "level":10,"inBattle": false}, {"location":{"x":12.49, "y": 9.32}, "level":1,"inBattle": false}, {"location":{"x":6.30, "y": 1.43}, "level":5,"inBattle": true}]""")
 
   // These values is for demonstrating larger map. That is what program gets from JSON string
 
-  var mapWidth : Int = 16
-  var mapHeight : Int = 11
-  var mapTiles : Array[Boolean] = Array(
-    true, true, true, true, false, true, true, true, true, false, true, true, false, true, true, true,
-    true, true, true, true, true, true, true, true, true, false, true, true, false, true, true, true,
-    true, false, true, true, true, true, true, true, true, true, true, true, false, true, true, true,
-    true, false, true, true, false, true, true, true, true, true, true, true, false, true, true, true,
-    true, false, true, true, false, true, true, true, true, false, true, true, false, true, true, true,
-    true, false, true, true, true, true, true, true, true, false, true, true, false, true, true, true,
-    true, false, true, true, true, true, true, false, false, false, true, true, false, true, true, true,
-    true, false, true, true, false, true, true, true, true, false, true, true, false, true, true, true,
-    true, false, true, true, false, true, true, true, true, true, true, true, false, true, true, true,
-    true, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true,
-    true, false, true, true, false, true, true, true, true, false, true, true, true, true, true, true)
+  var mapWidth : Int = 0
+  var mapHeight : Int = 0
+  var mapTiles : Array[Boolean] = Array()
 
 
   val windowWidth : Int = 200
@@ -52,7 +69,7 @@ object Overworld extends JFXApp {
   val tileSize : Int = 50
   val playerR : Int = 10
   val playerCoo : PlayerCoordinates = new PlayerCoordinates()
-
+  var playerBattleState : Boolean = false
   var newXZero : Int = 0
   var newYZero : Int = 0
 
@@ -66,7 +83,6 @@ object Overworld extends JFXApp {
     val placeholder = new Array[Boolean](tiles.length * tiles(0).length)
     for (j <- 0 to tiles.length - 1){
       for(i <- 0 to tiles(j).length - 1){
-        println(tiles(j)(i))
         val tile = (tiles(j)(i)("passable")).as[Boolean]
         placeholder(mapWidth * j + i) =  tile
       }
@@ -74,32 +90,46 @@ object Overworld extends JFXApp {
     mapTiles = placeholder
   }
 
-  def fromPlayerJSON(jsonString: String): Unit = {
+  def fromPlayerJSON(jsonString: String, playerString: String): Unit = {
 
-    oldPlayerJSON = jsonString
+    var str = playerString.replaceFirst(",", "")
+    var allPlayerID : Array[String] = str.split(",")
+    allPlayerID = allPlayerID.filter(!_.contains(playerID))
+    println(jsonString)
 
     val parsed: JsValue = Json.parse(jsonString)
-    val player = (parsed \ "playerParty").as[Map[String, JsValue]]
-    var location : JsValue = player("location")
-    playerCoo.x = (location \ "x").as[Double]
-    playerCoo.y = (location \ "y").as[Double]
+    val player = (parsed \ playerID).as[Map[String, JsValue]]
+    val locationPlayer : JsValue = player("location")
+    playerBattleState = player("inBattle").as[Boolean]
+    playerCoo.x = (locationPlayer \ "x").as[Double]
+    playerCoo.y = (locationPlayer \ "y").as[Double]
     newXZero = (playerCoo.x - windowWidth / (2 * tileSize)).toInt
     newYZero = (playerCoo.y - windowHeight / (2 * tileSize)).toInt
-
     renderMap()
     renderPlayer()
 
-    val otherParties = (parsed \ "otherParties").as[Array[JsValue]]
-
-    for (party <- otherParties){
-      location = party("location")
-      val oppX = (location \ "x").as[Double]
-      val oppY = (location \ "y").as[Double]
-      val level = (party \ "level").as[Int]
-      val inBattle = (party \ "inBattle").as[Boolean]
-
-      renderOppParty(oppX, oppY, level, inBattle)
+    for (oppParty <- allPlayerID) {
+      if(oppParty != playerID){
+        val party = (parsed \ oppParty).as[Map[String, JsValue]]
+        val locationOpp : JsValue = party("location")
+        val oppX = (locationOpp \ "x").as[Double]
+        val oppY = (locationOpp \ "y").as[Double]
+        val level = party("level").as[Int]
+        val inBattle = party("inBattle").as[Boolean]
+        renderOppParty(oppX, oppY, level, inBattle)
+      }
     }
+//    val otherParties = (parsed \ "otherParties").as[Array[JsValue]]
+//
+//    for (party <- otherParties){
+//      location = party("location")
+//      val oppX = (location \ "x").as[Double]
+//      val oppY = (location \ "y").as[Double]
+//      val level = (party \ "level").as[Int]
+//      val inBattle = (party \ "inBattle").as[Boolean]
+//
+//      renderOppParty(oppX, oppY, level, inBattle)
+//    }
 
   }
 
@@ -156,6 +186,7 @@ object Overworld extends JFXApp {
   }
 
   def renderMap() : Unit = {
+    println("Render map")
     for (a <- -1 to windowHeight / tileSize) {
       var j = a + newYZero
       if (playerCoo.y < 2 && playerCoo.y != 0 && playerCoo.y != 1) {
@@ -211,40 +242,50 @@ object Overworld extends JFXApp {
   }
 
   def renderPlayer() : Unit = {
-
-    val circle: Circle = new Circle {
-      radius = playerR
-      centerX = windowWidth / 2
-      centerY = windowWidth / 2
-      fill = Color.Purple
+    if(playerBattleState){
+      val rectangle: Rectangle = new Rectangle {
+        width = playerR * 2
+        height = playerR * 2
+        translateX = windowWidth / 2
+        translateY = windowWidth / 2
+        fill = Color.Purple
+      }
+      sceneGraphics.children.add(rectangle)
+    } else {
+      val circle: Circle = new Circle {
+        radius = playerR
+        centerX = windowWidth / 2
+        centerY = windowWidth / 2
+        fill = Color.Purple
+      }
+      sceneGraphics.children.add(circle)
     }
-    sceneGraphics.children.add(circle)
   }
 
-  def convertingPlayerJSON(): String = {
-    val locationMap : Map[String, Double] = Map("x" -> playerCoo.x, "y" -> playerCoo.y)
-    val locationMapJSON : JsValue = Json.toJson(locationMap)
-    val levelJSON : JsValue = Json.toJson(5)  // This 5 is just a place holder
-    val inBattleJSON : JsValue = Json.toJson(false)  // This is just a place holder
-    val playerPartyMap: Map[String, JsValue] = Map(
-      ("location", locationMapJSON),
-      ("level", levelJSON),
-      ("inBattle", inBattleJSON)
-    )
-    val playerPartyJSON : JsValue = Json.toJson(playerPartyMap)
-    val sendMapJSON : Map[String, JsValue] = Map("playerParty" -> playerPartyJSON, "otherParties" -> oppInfo)
+//  def convertingPlayerJSON(): String = {
+//    val locationMap : Map[String, Double] = Map("x" -> playerCoo.x, "y" -> playerCoo.y)
+//    val locationMapJSON : JsValue = Json.toJson(locationMap)
+//    val levelJSON : JsValue = Json.toJson(5)  // This 5 is just a place holder
+//    val inBattleJSON : JsValue = Json.toJson(false)  // This is just a place holder
+//    val playerPartyMap: Map[String, JsValue] = Map(
+//      ("location", locationMapJSON),
+//      ("level", levelJSON),
+//      ("inBattle", inBattleJSON)
+//    )
+//    val playerPartyJSON : JsValue = Json.toJson(playerPartyMap)
+//    val sendMapJSON : Map[String, JsValue] = Map("playerParty" -> playerPartyJSON, "otherParties" -> oppInfo)
+//
+//    Json.stringify(Json.toJson(sendMapJSON))
+//  }
 
-    Json.stringify(Json.toJson(sendMapJSON))
-  }
-
-  def sendPlayerJSON() : Unit = {
-    newPlayerJSON = convertingPlayerJSON()
-
-    fromPlayerJSON(newPlayerJSON)
-  }
+//  def sendPlayerJSON() : Unit = {
+//    newPlayerJSON = convertingPlayerJSON()
+//
+//    fromPlayerJSON(newPlayerJSON)
+//  }
 
   //fromMapJSON("""{"mapSize":{"width":3, "height":4}, "tiles":[[{"type":"grass", "passable": true},{"type":"grass", "passable": true},{"type":"grass", "passable": true}],[{"type":"grass", "passable": false},{"type":"grass", "passable": true},{"type":"grass", "passable": true}],[{"type":"grass", "passable": true},{"type":"grass", "passable": true},{"type":"grass", "passable": true}],[{"type":"grass", "passable": true},{"type":"grass", "passable": false},{"type":"grass", "passable": true}]]}""")
-  fromPlayerJSON("""{"playerParty": {"location":{"x":2, "y": 1}, "level":25, "inBattle": false}, "otherParties":[{"location":{"x":2, "y": 2}, "level":15,"inBattle": true}, {"location":{"x":2.43, "y": 0.45}, "level":10,"inBattle": false}, {"location":{"x":12.49, "y": 9.32}, "level":1,"inBattle": false}, {"location":{"x":6.30, "y": 1.43}, "level":5,"inBattle": true}]}""")
+  //fromPlayerJSON("""{"playerParty": {"location":{"x":2, "y": 1}, "level":25, "inBattle": false}, "otherParties":[{"location":{"x":2, "y": 2}, "level":15,"inBattle": true}, {"location":{"x":2.43, "y": 0.45}, "level":10,"inBattle": false}, {"location":{"x":12.49, "y": 9.32}, "level":1,"inBattle": false}, {"location":{"x":6.30, "y": 1.43}, "level":5,"inBattle": true}]}""")
 
 
   stage = new PrimaryStage{
@@ -258,7 +299,7 @@ object Overworld extends JFXApp {
   }
 
   val update: Long => Unit = (time: Long) => {
-    sendPlayerJSON()
+    fromPlayerJSON(playerJSON, playerString)
   }
   // Start Animations. Calls update 60 times per second (takes update as an argument)
   AnimationTimer(update).start()
